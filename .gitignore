@@ -3,3 +3,6 @@ venv
 output/
 dist/
 gpay_parser.egg-info
+*.exe
+*.spec
+build/
