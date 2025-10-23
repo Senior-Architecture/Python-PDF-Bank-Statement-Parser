@@ -6,3 +6,4 @@ gpay_parser.egg-info
 *.exe
 *.spec
 build/
+*__pycache__/
