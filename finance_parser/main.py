@@ -8,7 +8,7 @@ logging.getLogger("pdfminer").setLevel(logging.ERROR)
 
 
 def main():
-    pdf_path = "media/canara_statement-10.pdf"
+    pdf_path = "media/canara_statement.pdf"
 
     "For Canara statements"
     canara_df = canara_parser(pdf_path)
