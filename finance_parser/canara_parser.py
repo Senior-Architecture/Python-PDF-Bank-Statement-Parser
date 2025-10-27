@@ -5,6 +5,7 @@ import pdfplumber
 
 
 def clean_text(text: str) -> str:
+    "Removes page header lines"
     return re.sub(
         r'Page\s*\d+\s*Date\s+Particulars\s+Deposits\s+Withdrawals\s+Balance',
         '',
@@ -15,6 +16,18 @@ def clean_text(text: str) -> str:
 
 
 def extract_transaction_blocks(pdf_path: str) -> list:
+    """
+    Extracts individual transaction text blocks from a bank statement PDF.
+
+    Steps:
+        1. Reads all text from the PDF using pdfplumber.
+        2. Extracts only the section between 'Opening Balance' and 'Closing Balance'.
+        3. Cleans out page headers and noise using clean_text().
+        4. Splits transactions based on 'Chq:' markers and reconstructs each block.
+
+    Returns:
+        list: A list of cleaned transaction text blocks.
+    """
     with pdfplumber.open(pdf_path) as pdf:
         text = "\n".join(page.extract_text() for page in pdf.pages)
 
@@ -40,9 +53,21 @@ def extract_transaction_blocks(pdf_path: str) -> list:
 
 def parse_transaction(block: str) -> dict:
     """
-    Parse a Canara Bank transaction block into structured data.
-    """
+    Parses a single raw transaction text block and extracts structured details.
 
+    Extracted fields:
+        - date: Transaction date (DD-MM-YYYY)
+        - time: Transaction time (HH:MM:SS), if present
+        - txn_type: Transaction type (e.g. UPI/DR, NEFT CR, IMPS/DR)
+        - party: Counterparty name inferred from UPI or NEFT details
+        - particulars: Remaining descriptive text after cleanup
+        - amount: Transaction amount (second-last number in the block)
+        - balance: Account balance after the transaction (last number)
+        - cheque_no: Cheque number if present (after 'Chq:')
+
+    Returns:
+        dict: Structured transaction data extracted from the text block.
+    """
     # --- Extract date ---
     date_match = re.search(r'\b(\d{2}-\d{2}-\d{4})\b', block)
     date = date_match.group(1) if date_match else None
@@ -101,11 +126,26 @@ def parse_transaction(block: str) -> dict:
 
 
 def to_table(transactions: list) -> pd.DataFrame:
+    """
+    Converts a list of parsed transaction dictionaries into a pandas DataFrame.
+    """
     return pd.DataFrame(transactions)
 
 
 
 def canara_parser(pdf_path: str) -> pd.DataFrame:
+    """
+    High-level wrapper that extracts and parses all transactions
+    from a Canara Bank statement PDF.
+
+    Steps:
+        1. Extracts raw transaction text blocks from the PDF.
+        2. Parses each block into structured transaction data.
+        3. Converts the parsed results into a pandas DataFrame.
+
+    Returns:
+        pd.DataFrame: Structured table of all parsed transactions.
+    """
     transaction_blocks = extract_transaction_blocks(pdf_path)
     transactions = [parse_transaction(block) for block in transaction_blocks]
     return to_table(transactions)
