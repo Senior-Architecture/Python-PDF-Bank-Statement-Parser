@@ -11,3 +11,4 @@ new.py
 *.json
 *.csv
 *.ipynb
+*.egg-info
