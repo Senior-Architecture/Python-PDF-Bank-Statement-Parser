@@ -1,8 +1,8 @@
 import argparse
 import os, logging
-from canara_parser import canara_parser, SENSITIVE_FIELDS as CANARA_FIELDS
-from gpay_parser import gpay_parser, SENSITIVE_FIELDS as GPAY_FIELDS
-from utils.privacy import sanitize_transactions
+from .canara_parser import canara_parser, SENSITIVE_FIELDS as CANARA_FIELDS
+from .gpay_parser import gpay_parser, SENSITIVE_FIELDS as GPAY_FIELDS
+from .utils.privacy import sanitize_transactions
 
 # Supperss `gray color warning`s
 logging.getLogger("pdfminer").setLevel(logging.ERROR)
