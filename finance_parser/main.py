@@ -1,7 +1,8 @@
 import argparse
 import os, logging
-from canara_parser import canara_parser
-from gpay_parser import gpay_parser
+from canara_parser import canara_parser, SENSITIVE_FIELDS as CANARA_FIELDS
+from gpay_parser import gpay_parser, SENSITIVE_FIELDS as GPAY_FIELDS
+from utils.privacy import sanitize_transactions
 
 # Supperss `gray color warning`s
 logging.getLogger("pdfminer").setLevel(logging.ERROR)
@@ -45,6 +46,12 @@ def parse_args():
         choices=["csv", "json"],
         default="csv",
         help="Output file format (default: csv)."
+    )
+    parser.add_argument(
+        "-p", "--privacy",
+        choices=["full", "masked", "anonymized"],
+        default="full",
+        help="Privacy level for output data. Options: full (raw), masked, anonymized."
     )
     return parser.parse_args()
 
