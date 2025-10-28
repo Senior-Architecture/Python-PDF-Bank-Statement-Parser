@@ -3,6 +3,11 @@ import pandas as pd
 import pdfplumber
 
 
+SENSITIVE_FIELDS = {
+    "particulars": 1,
+    "cheque_no": 0
+}
+
 
 def clean_text(text: str) -> str:
     "Removes page header lines"

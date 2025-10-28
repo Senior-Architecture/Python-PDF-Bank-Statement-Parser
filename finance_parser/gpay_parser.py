@@ -2,6 +2,10 @@ import camelot, re
 import pandas as pd
 
 
+SENSITIVE_FIELDS = {
+    "upi_id": 0
+}
+
 
 def extract_transactions(pdf_path: str) -> list:
     """Extract structured transaction data from a Google Pay statement PDF.

@@ -15,7 +15,11 @@ def mask_value(value: str) -> str:
         return f"{name[:2]}****@{domain}"
 
     # Mask long numeric IDs
-    return re.sub(r"\d{4,}", lambda m: "*" * len(m.group(0)), value)
+    return re.sub(
+        r"\d{4,}",
+        lambda m: "*" * (len(m.group(0)) // 2) + m.group(0)[len(m.group(0)) // 2:],
+        value
+    )
 
 
 
@@ -26,15 +30,14 @@ def sanitize_transactions(df: pd.DataFrame, level: str, sensitive_fields: dict) 
     if level == "full":
         return df
 
-    # Mask fields
+    # Drop or mask fields
     if level == "masked":
-        print(sensitive_fields)
-        for col in sensitive_fields.get("to_mask", []):
+        for col, lvl in sensitive_fields.items():
             if col in df.columns:
-                df[col] = df[col].apply(mask_value)
-        # Drop dangerous raw fields
-        df.drop(columns=[c for c in sensitive_fields.get("to_drop", []) if c in df.columns], inplace=True)
-        return df
+                if lvl == 1:
+                    df.drop(col, axis=1, inplace=True)
+                else:
+                    df[col] = df[col].apply(mask_value)
 
     # Anonymized — drop everything sensitive
     if level == "anonymized":
