@@ -5,7 +5,18 @@ import pandas as pd
 
 
 def mask_value(value: str) -> str:
-    """Mask sensitive strings (UPI IDs, cheque numbers, txn IDs)."""
+    """
+    Mask sensitive information in a string.
+
+    - Hides part of UPI IDs (e.g., 'user@bank' → 'us****@bank')
+    - Masks the first half of long numeric IDs (e.g., cheque or transaction numbers)
+
+    Args:
+        value (str): Input string containing sensitive info.
+
+    Returns:
+        str: Masked string.
+    """
     if not isinstance(value, str) or not value:
         return value
 
@@ -24,7 +35,24 @@ def mask_value(value: str) -> str:
 
 
 def sanitize_transactions(df: pd.DataFrame, level: str, sensitive_fields: dict) -> pd.DataFrame:
-    """Apply privacy transformations to a DataFrame based on level and field rules."""
+    """
+    Apply privacy rules to a transactions DataFrame based on the specified level.
+
+    Privacy levels:
+      - full: keep all data
+      - masked: drop or mask sensitive fields
+      - anonymized: remove all sensitive fields
+
+    The sensitive_fields dict should indicate which columns to mask or drop.
+
+    Args:
+        df (pd.DataFrame): The transactions DataFrame.
+        level (str): Privacy level ('full', 'masked', 'anonymized').
+        sensitive_fields (dict): Columns and their handling rules.
+
+    Returns:
+        pd.DataFrame: DataFrame with privacy rules applied.
+    """
     df = df.copy()
 
     if level == "full":

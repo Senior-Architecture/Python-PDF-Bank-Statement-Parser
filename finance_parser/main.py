@@ -19,6 +19,11 @@ def parse_args():
         - -t / --type: Type of statement to parse ('canara' or 'gpay'). Required.
         - -o / --output: Directory to save the parsed output file (default: ./output).
         - -f / --format: Output file format ('csv' or 'json'). Default is 'csv'.
+        - -p / --privacy: Privacy level for output data.
+                          Options:
+                            - full → includes all data (raw output)
+                            - masked → partially hides sensitive data
+                            - anonymized → removes all sensitive information
 
     Returns:
         argparse.Namespace: Parsed command-line arguments.
@@ -59,19 +64,20 @@ def parse_args():
 
 def main():
     """
-    Entry point for the statement parser CLI.
+    Entry point for the Finance Parser CLI tool.
 
     This function:
       1. Parses command-line arguments.
-      2. Determines which parser to use (Canara Bank or GPay).
-      3. Processes the provided PDF statement.
-      4. Exports the parsed transactions to CSV or JSON format.
+      2. Selects the appropriate parser (Canara Bank or GPay).
+      3. Extracts and processes transactions from the given PDF.
+      4. Applies privacy settings (full, masked, anonymized) to the output data.
+      5. Exports the processed results in CSV or JSON format.
 
-    The output file is saved in the specified directory, with the original
-    PDF name suffixed by privacy level.
+    Output files are saved in the specified directory, named using the
+    input PDF’s base name and privacy level.
 
     Example:
-        python main.py statements/canara.pdf -t canara -f json -o output
+        python main.py statements/canara.pdf -t canara -f json -o output -p masked
     """
     args = parse_args()
     os.makedirs(args.output, exist_ok=True)
