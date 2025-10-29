@@ -1,27 +1,25 @@
 [build-system]
-requires = ["setuptools", "wheel"]
+requires = ["setuptools>=68.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
-
 [project]
-name = "gpay-parser"
-version = "0.1.0"
-description = "CLI tool to extract and export Google Pay transaction history from PDF statements."
+name = "finance-parser"
+version = "0.0.1"
+description = "CLI tool to parse bank statements into structured data"
 readme = "README.md"
-license = { text = "MIT" }
-authors = [
-  { name = "Riyas Binumer", email = "muhammadriyask11@email.com" }
-]
+authors = [{ name = "Cozmek" }]
+license = "MIT"
 requires-python = ">=3.9"
-dependencies = [
-  "pdfplumber",
-  "pandas"
-]
 
+dependencies = [
+    "camelot-py[cv]",
+    "pandas",
+    "tabulate"
+]
 
 [project.scripts]
-gpay-parser = "main:main"
+finance-parser = "finance_parser.main:main"
 
-
-[tool.setuptools]
-py-modules = ["main"]
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["finance_parser"]
