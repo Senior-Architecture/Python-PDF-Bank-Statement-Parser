@@ -2,7 +2,7 @@ import camelot, re
 import pandas as pd
 
 
-SENSITIVE_FIELDS = ["upi_id"]
+SENSITIVE_FIELDS = ["txn_id"]
 
 
 def extract_transactions(pdf_path: str) -> list:
@@ -54,7 +54,7 @@ def to_structured_df(transactions: list) -> pd.DataFrame:
                 - time (str): Transaction time
                 - type (str): 'Credit' or 'Debit', standardized from GPay text
                 - party (str): Name of the sender or receiver
-                - upi_id (str): UPI transaction ID
+                - txn_id (str): UPI transaction ID
                 - account (str): Linked account or payment source
                 - amount (str): Transaction amount, cleaned of currency symbols
 
@@ -75,8 +75,8 @@ def to_structured_df(transactions: list) -> pd.DataFrame:
     # second column: transaction details
     pattern = re.compile(
         r"(?P<type>Paid\s+to|Received\s+from)\s+"                # Paid to / Received from
-        r"(?P<party>[A-Za-z\s\.]+?)\s+"                          # Party name (with spaces, stop before 'UPI')
-        r"UPI\s+Transaction\s+ID:\s*(?P<upi_id>[\w\d]+)\s+"      # UPI ID
+        r"(?P<payee>[A-Za-z\s\.]+?)\s+"                          # Payee name (with spaces, stop before 'UPI')
+        r"UPI\s+Transaction\s+ID:\s*(?P<txn_id>[\w\d]+)\s+"      # UPI Transaction ID
         r"Paid\s+(?:to|by)\s+(?P<account>.+)$",                  # account
         re.IGNORECASE
     )
