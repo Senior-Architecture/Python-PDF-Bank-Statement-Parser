@@ -3,10 +3,7 @@ import pandas as pd
 import pdfplumber
 
 
-SENSITIVE_FIELDS = {
-    "particulars": 1,
-    "cheque_no": 0
-}
+SENSITIVE_FIELDS = ["cheque_no", "txn_id", "upi_id"]
 
 
 def clean_text(text: str) -> str:
@@ -58,24 +55,79 @@ def extract_transaction_blocks(pdf_path: str) -> list:
 
 def parse_transaction(block: str) -> dict:
     """
-    Parses a single raw transaction text block and extracts structured details.
+    Parse a single raw transaction text block into structured fields.
+
+    This function extracts key financial details from unstructured
+    transaction text found in bank statements (e.g., Canara, NEFT, UPI, IMPS).
 
     Extracted fields:
-        - date: Transaction date (DD-MM-YYYY)
-        - time: Transaction time (HH:MM:SS), if present
-        - txn_type: Transaction type (e.g. UPI/DR, NEFT CR, IMPS/DR)
-        - party: Counterparty name inferred from UPI or NEFT details
-        - particulars: Remaining descriptive text after cleanup
-        - amount: Transaction amount (second-last number in the block)
-        - balance: Account balance after the transaction (last number)
-        - cheque_no: Cheque number if present (after 'Chq:')
+        - date (str): Transaction date in DD-MM-YYYY format.
+        - time (str | None): Transaction time (HH:MM:SS) if available.
+        - txn_type (str): 'Credit' or 'Debit', based on CR/DR markers.
+        - mode (str): Transaction mode (e.g., UPI, NEFT, IMPS, ATM).
+        - txn_id (str | None): Transaction ID (for UPI/IMPS transactions).
+        - bank_code (str | None): 4-letter bank code (e.g., HDFC, SBIN).
+        - payee (str | None): Counterparty or payee name inferred from details.
+        - upi_id (str | None): UPI ID if available (e.g., **john@okicici).
+        - amount (str | None): Transaction amount (usually the second-last number).
+        - balance (str | None): Account balance after the transaction (last number).
+        - cheque_no (str | None): Cheque number if found after 'Chq:'.
+
+    Notes:
+        - Handles both UPI and non-UPI transactions.
+        - Cleans and normalizes text by removing noise like slashes, DR/CR tags, and spaces.
+        - Attempts to infer missing UPI IDs by fallback parsing when standard regex fails.
 
     Returns:
-        dict: Structured transaction data extracted from the text block.
+        dict: A dictionary containing all parsed transaction details.
     """
     # --- Extract date ---
     date_match = re.search(r'\b(\d{2}-\d{2}-\d{4})\b', block)
     date = date_match.group(1) if date_match else None
+
+    # --- Extract transaction type ---
+    txn_type_match = re.search(
+        r'\b(UPI/DR|UPI/CR|NEFT CR|NEFT DR|SBINT|REV|SERVICE CHARGES|IMPS/CR|IMPS/DR|ATM/DR|POS/DR|INT/CR)\b',
+        block
+    )
+    txn_type_match = txn_type_match.group(1) if txn_type_match else None
+    txn_type = "Credit" if "CR" in txn_type_match else "Debit"
+    mode = re.sub(r'\s|/|DR|CR', '', txn_type_match)
+
+    # --- Particulars cleanup ---
+    particulars = re.sub(
+            r'\b\d{2}-\d{2}-\d{4}\b|Chq:\s*\S+|(\d{1,3}(?:,\d{3})*\.\d{2})',
+            '',
+            block
+        ).strip()
+
+    particulars = re.sub(r'\s+', ' ', particulars)  # normalize spaces
+
+    # Extract data according to the txn type
+    txn_id = bank_code = upi_id = None
+    if "UPI" in mode:
+        # --- Extract Transaction ID ---
+        txn_id_match = re.search(r'\d{12}', block)
+        txn_id = txn_id_match.group(0) if txn_id_match else None
+
+        # --- Bank Code ---
+        bankcode_match = re.search(r'/\s*([A-Z]{4})\s*/', block)
+        bank_code = bankcode_match.group(1) if bankcode_match else None
+
+        # --- UPI ID ---
+        upi_match = re.search(r'(\*\*[A-Za-z0-9._\-]+@[A-Za-z0-9._\-]+)', block)
+        upi_id = upi_match.group(1) if upi_match else None
+        if not upi_id:
+            upi_id = re.sub(r'[-\s]', '', particulars.split('/')[5])
+
+        # --- Payee name ---
+        payee = particulars.split("/")[3].replace("\n", "")
+
+    elif "NEFT" in mode:
+        payee = particulars.split("-")[-2]
+
+    else:
+        payee = particulars.split("Chq")[0]
 
     # --- Extract cheque number ---
     chq_match = re.search(r'Chq:\s*(\S+)', block)
@@ -89,40 +141,19 @@ def parse_transaction(block: str) -> dict:
     if len(balance_match) >= 2:
         amount = balance_match[-2]
 
-    # --- Extract transaction type ---
-    txn_type_match = re.search(
-        r'\b(UPI/DR|UPI/CR|NEFT CR|NEFT DR|SBINT|IMPS/CR|IMPS/DR|ATM/DR|POS/DR|INT/CR)\b',
-        block
-    )
-    txn_type = txn_type_match.group(1) if txn_type_match else "UNKNOWN"
-
     # --- Extract time ---
     time_match = re.search(r'\d{2}:\d{2}:\d{2}', block)
     time = time_match.group(0) if time_match else None
-
-    # --- Extract particulars (the messy middle) ---
-    particulars = re.sub(
-        r'\b\d{2}-\d{2}-\d{4}\b|Chq:\s*\S+|(\d{1,3}(?:,\d{3})*\.\d{2})',
-        '',
-        block
-    ).strip()
-
-    particulars = re.sub(r'\s+', ' ', particulars)  # normalize spaces
-
-    # --- Extract Party name ---
-    party = None
-    if txn_type.startswith("UPI"):
-        party = block.split("/")[3].replace("\n", "")
-
-    elif txn_type.startswith("NEFT"):
-        party = particulars.split("-")[-2]
 
     return {
         "date": date,
         "time": time,
         "txn_type": txn_type,
-        "party": party,
-        "particulars": particulars,
+        "mode": mode,
+        "txn_id": txn_id,
+        "bank_code": bank_code,
+        "payee": payee,
+        "upi_id": upi_id,
         "amount": amount,
         "balance": balance,
         "cheque_no": cheque_no,
