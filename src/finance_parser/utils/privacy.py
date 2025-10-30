@@ -48,7 +48,7 @@ def sanitize_transactions(df: pd.DataFrame, level: str, sensitive_fields: dict) 
     Args:
         df (pd.DataFrame): The transactions DataFrame.
         level (str): Privacy level ('full', 'masked', 'anonymized').
-        sensitive_fields (dict): Columns and their handling rules.
+        sensitive_fields (list): Column names.
 
     Returns:
         pd.DataFrame: DataFrame with privacy rules applied.
@@ -60,15 +60,12 @@ def sanitize_transactions(df: pd.DataFrame, level: str, sensitive_fields: dict) 
 
     # Drop or mask fields
     if level == "masked":
-        for col, lvl in sensitive_fields.items():
+        for col in sensitive_fields:
             if col in df.columns:
-                if lvl == 1:
-                    df.drop(col, axis=1, inplace=True)
-                else:
-                    df[col] = df[col].apply(mask_value)
+                df[col] = df[col].apply(mask_value)
 
     # Anonymized — drop everything sensitive
-    if level == "anonymized":
+    if level == "clean":
         df.drop(columns=[c for c in sensitive_fields if c in df.columns], inplace=True)
         return df
 
